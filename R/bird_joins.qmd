@@ -1,0 +1,77 @@
+---
+title: "Day 7 EOD Activity: task 1 and 2"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(here)
+library(lubridate)
+
+```
+
+# Task 1: Joins on birds
+
+```{r}
+# read in data 
+bird_observations <- read_csv(here("data", "52_pp52_birds_1.csv"))
+
+sites <- read_csv(here("data", "52_pp52_sites_1.csv"))
+
+surveys <- read_csv(here("data", "52_pp52_surveys_1.csv"))
+
+taxalist <- read_csv(here("data", "52_pp52_taxalist_1.csv"))
+```
+
+```{r}
+birds_subset <- bird_observations %>%
+  filter(species_id %in% c("BHCO", "RWBL")) %>% 
+  filter(site_id %in% c("LI-W", "NU-C"))
+```
+
+### Left join practice
+```{r}
+# update birds_subset to include sites and taxalist information 
+birds_left <- left_join(birds_subset, sites) # will join by site_id 
+birds_left <- left_join(birds_left, taxalist) # will join by species_id
+
+```
+
+
+### Full join practice
+- a full_join between birds_subset and sites will contain all the columns from the subset and all the columns of sites and it will join it together using the key column site_id
+```{r}
+birds_full <- full_join(birds_subset, sites, by = "site_id")
+```
+
+
+# Task 2: Data wrangling and visualization with birds
+
+```{r}
+birds <- bird_observations %>% 
+  rename("bird_obs_notes" = "notes")
+
+# combine all observations in birds and join the other 3 
+# only include these columns: survey_date, common_name, park_name, and bird_count
+birds_2 <- birds %>%
+  left_join(sites, by = "site_id") %>% 
+  left_join(taxalist, by = "species_id") %>% 
+  left_join(surveys, by = "survey_id") %>% 
+  select("survey_date", "common_name", "park_name", "bird_count")
+  
+```
+
+
+```{r}
+# fixing the dates (only want months)
+# dplyr::relocate() to move the new survey_month column to immediately after the survey_date column
+# Find the total number of birds observed by park and month
+
+birds_final <- birds_2 %>%
+  mutate(survey_month= lubridate::month(survey_date)) %>%
+  dplyr::relocate(survey_month, .after = survey_date) %>%
+  group_by(park_name, survey_month) %>% 
+  summarise(total_birds = n()) %>% 
+  filter(park_name %in% c("Lindo", "Orme", "Palamino", "Sonrisa"))
+  
+```
